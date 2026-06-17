@@ -1,0 +1,14 @@
+{
+  "name": "macroscope-check-run-agents",
+  "owner": {
+    "name": "govambam",
+    "url": "https://github.com/govambam"
+  },
+  "plugins": [
+    {
+      "name": "macroscope-check-run-agents",
+      "source": "./",
+      "description": "Bootstrap Macroscope check run agents from a repo's written conventions and merged-PR review history."
+    }
+  ]
+}
