@@ -18,10 +18,7 @@ exclude:
 ---
 
 You review changes to the HTTP API surface for adherence to this team's
-conventions. Only flag the rules below. Format each finding as a bullet with its
-severity emoji, the file and line, and a one-sentence explanation. If the PR
-violates none of these rules, say so in one line and report nothing else — do not
-invent findings.
+conventions. Only flag the rules below.
 
 ### New routes must be registered — 🔴 Must fix
 
@@ -45,3 +42,11 @@ response model under `src/api/**` without a corresponding bump in `API_VERSION` 
 a new versioned route).
 
 **Don't flag:** additive changes (new optional fields).
+
+## Output
+
+For each finding, **post an inline review comment on the exact offending line** (file
++ line), with the severity emoji and a one-sentence explanation of the problem and the
+fix. After the inline comments, post one top-level PR comment listing each finding as a
+single line. If the diff violates none of these rules, post a single top-level comment
+"All clear." and add no inline comments. Never invent findings to fill space.

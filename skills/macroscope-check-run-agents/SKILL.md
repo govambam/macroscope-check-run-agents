@@ -207,6 +207,16 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   and they can flip one to blocking later.
 - Body: specific "flag X when Y" instructions, explicit severity levels, and a
   **"permission to do nothing"** clause to suppress false positives.
+- **Every agent must post findings as inline review comments.** Without this,
+  Macroscope dumps findings into the check-run summary (the Checks tab), where they're
+  far less visible and actionable. End each agent body with this output-format
+  instruction (verbatim or close to it):
+
+  > For each finding, **post an inline review comment on the exact offending line**
+  > (file + line), with the severity emoji and a one-sentence explanation of the
+  > problem and the fix. After the inline comments, post one top-level PR comment that
+  > lists each finding as a single line. If the diff is clean, post a single top-level
+  > comment "All clear." and add no inline comments. Never invent findings to fill space.
 - **No provenance in the agent body.** Don't write "Source", "seen in #1234", or any
   citation into the `.md` — Macroscope reads the body as instructions at runtime, so a
   citation is noise it might act on. Provenance belongs in the proposal (Step 4) and

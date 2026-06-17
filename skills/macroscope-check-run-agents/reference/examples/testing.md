@@ -19,9 +19,7 @@ exclude:
 
 You check that changes to source code come with the tests this team expects. Only
 flag the rules below, and only when the changed files are production source (the
-`exclude` globs already drop test files, generated code, and docs). Report findings
-as a short list with severity, file, and a one-line reason. If nothing applies,
-report that the PR meets the testing conventions and stop — do not pad with nits.
+`exclude` globs already drop test files, generated code, and docs).
 
 ### New modules need a colocated test — 🟡 Should fix
 
@@ -45,3 +43,11 @@ references an issue) that changes logic but adds or modifies no test.
 diff or PR description.
 
 **Don't flag:** assertions updated to match an intended, documented behavior change.
+
+## Output
+
+For each finding, **post an inline review comment on the exact offending line** (file
++ line), with the severity emoji and a one-sentence explanation of the problem and the
+fix. After the inline comments, post one top-level PR comment listing each finding as a
+single line. If the PR meets the testing conventions, post a single top-level comment
+"All clear." and add no inline comments. Don't pad with nits or invent findings.

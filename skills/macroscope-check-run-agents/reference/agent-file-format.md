@@ -87,4 +87,11 @@ provenance is noise the agent might try to act on. Provenance is surfaced to the
 elsewhere — in the pre-pick proposal and in the PR description (see `SKILL.md`
 Steps 4–5) — never in the `.md` the agent runs.
 
+**Always require inline review comments.** Every generated agent must end with an
+output-format instruction telling it to post each finding as an **inline review
+comment on the offending line** (severity + one-line explanation/fix), then a
+top-level summary comment, and "All clear." when the diff is clean. Without this the
+agent writes findings into the check-run summary, where they're buried in the Checks
+tab instead of annotating the code. The `examples/` show the exact wording.
+
 See `examples/` for two complete agents in this shape.
