@@ -267,18 +267,29 @@ and either fall back to the largest available PR or ask the user to paste a URL.
 - The backtest only produces findings if the **Macroscope GitHub app is installed on
   `$REPO`**. If the recreated PR shows no Macroscope checks, that's the cause — the
   app isn't installed — not a problem with the agents.
-- `pr-backtest.sh` is a **third-party script** that uses the user's **write access** to
-  push branches and open a new PR in their repo. Offer to show it before running so
-  they can read it, and download it to a **temp dir** (never the repo, so it can't be
-  accidentally committed):
+- The backtest uses `pr-backtest.sh`, which **ships bundled with this skill** (a
+  vendored copy of [pr-backtest-script](https://github.com/govambam/pr-backtest-script))
+  — there is **no runtime download**. It uses the user's **write access** to push two
+  branches and open a new PR in their repo, but all its own work happens in a
+  disposable temp clone, so their checkout is never touched. Offer to show the script
+  (it's in this skill's `scripts/` folder) before running.
+
+Locate the bundled script (works for both plugin and manual-copy installs) and run it:
 
 ```bash
-TMP=$(mktemp -d)
-curl -fsSL https://raw.githubusercontent.com/govambam/pr-backtest-script/main/pr-backtest.sh -o "$TMP/pr-backtest.sh"
-# optional: show "$TMP/pr-backtest.sh" to the user first
-chmod +x "$TMP/pr-backtest.sh"
-"$TMP/pr-backtest.sh" <PR_URL>
+SCRIPT=""
+for c in \
+  "${CLAUDE_PLUGIN_ROOT:-}/skills/macroscope-check-run-agents/scripts/pr-backtest.sh" \
+  "$HOME/.claude/skills/macroscope-check-run-agents/scripts/pr-backtest.sh" \
+  ".claude/skills/macroscope-check-run-agents/scripts/pr-backtest.sh"; do
+  [ -n "$c" ] && [ -f "$c" ] && { SCRIPT="$c"; break; }
+done
+[ -z "$SCRIPT" ] && echo "Bundled pr-backtest.sh not found — check the skill is installed correctly." >&2
+bash "$SCRIPT" <PR_URL>
 ```
+
+(If you already know this skill's absolute install path, just run
+`scripts/pr-backtest.sh` from there directly — the loop above is only a fallback.)
 
 It prints the new `[backtest] …` PR's URL. Point the user to that PR's **Checks tab**
 to read the **actual** Macroscope findings.

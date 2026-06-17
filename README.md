@@ -77,11 +77,15 @@ only merges if you explicitly choose to.
 
 ## Backtesting
 
-The optional validation step uses the
-[pr-backtest-script](https://github.com/govambam/pr-backtest-script), which recreates
-an existing PR as a fresh one so live review bots evaluate it as new. The skill
-downloads it to a temp dir, offers to show it first, runs it on a chosen merged PR,
-and points you to the new PR's Checks tab for the real Macroscope findings.
+The optional validation step recreates an existing PR as a fresh one so your live
+Macroscope agents evaluate it as new, then points you to the new PR's Checks tab for
+the real findings. It uses `pr-backtest.sh`, which is **bundled with this skill** at
+`skills/macroscope-check-run-agents/scripts/pr-backtest.sh` — a vendored snapshot of
+[pr-backtest-script](https://github.com/govambam/pr-backtest-script). Nothing is
+downloaded at runtime, so everything that runs is in this one repo for you to read
+before installing. The script does all its work in a disposable temp clone and never
+touches your checkout; it does push two branches and open a PR (using your `gh` write
+access).
 
 ## Repository layout
 
@@ -96,6 +100,8 @@ skills/
       agent-file-format.md         # frontmatter schema + body conventions
       good-rule-heuristics.md      # what makes a rule worth automating
       examples/                    # two exemplar agents
+    scripts/
+      pr-backtest.sh               # bundled backtest script (vendored snapshot)
 ```
 
 ## License
