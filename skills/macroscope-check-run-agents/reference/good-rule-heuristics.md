@@ -90,7 +90,9 @@ Scope each agent with `include`/`exclude` globs so it only runs on relevant file
 - Carries a **severity** (🔴 / 🟡 / 🟢).
 - Says what **not** to flag where false positives are likely.
 - Ends the agent with **explicit permission to report nothing** on a clean PR.
-- Records **provenance** (source file and/or PR numbers) so the user can verify it.
+- Has **provenance tracked for the user** (source file + line/quote, or PR # +
+  reviewer + comment excerpt) — shown in the proposal and PR description, **not**
+  written into the agent file.
 
 ## Anti-patterns — do not propose
 

@@ -68,12 +68,17 @@ and/or as a top-level PR comment.
 
 ## Conventions this skill uses for generated agents
 
-To keep generated agents readable and to preserve provenance, this skill writes each
-rule as a `###` section with:
+To keep generated agents readable, this skill writes each rule as a `###` section
+with:
 
 - a **severity** marker — 🔴 Must fix / 🟡 Should fix / 🟢 Nit
 - a **What to flag** description (the "flag X when Y")
 - a **Don't flag** line where useful
-- a **Source** line — the convention file and/or the PR numbers the rule came from
+
+**No provenance in the agent file.** Do *not* write "Source", "seen in #1234", or any
+citation into the agent body. Macroscope reads the body as instructions at runtime, so
+provenance is noise the agent might try to act on. Provenance is surfaced to the user
+elsewhere — in the pre-pick proposal and in the PR description (see `SKILL.md`
+Steps 4–5) — never in the `.md` the agent runs.
 
 See `examples/` for two complete agents in this shape.

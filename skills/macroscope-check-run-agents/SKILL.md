@@ -91,7 +91,11 @@ Finally, read the mechanical enforcement layer **only to exclude** from it:
 - Linters/formatters/type-checkers/CI: `.eslintrc*`, `eslint.config.*`, `.prettierrc*`, `tsconfig*.json`, `ruff.toml`/`pyproject.toml`, `.golangci*`, `.rubocop.yml`, `.github/workflows/**`
 - Any rule these already enforce on every PR is a **bad** check run agent (pure noise). Note what's covered and drop those candidates.
 
-Collect each discovered rule with its **provenance** (the file path it came from).
+Collect each discovered rule with its **provenance**: the **file path** *and* the
+specific **line or short quote** that states the convention (e.g. `CONTRIBUTING.md` →
+"every endpoint must be registered in the router"). You'll show this to the user so
+they can see exactly where in their repo the rule came from — capture enough to be
+convincing, not just a filename.
 
 ## Step 2 — Mine merged PRs (behavioral)
 
@@ -128,7 +132,10 @@ Then:
   "Conventions, not bugs" section in `reference/good-rule-heuristics.md`.
 - **Recurrence is the signal.** A theme raised across **multiple PRs / multiple
   reviewers** is a strong candidate. A one-off nit is not — drop it.
-- Keep, per candidate, the **PR numbers and reviewers** that evidence it (provenance).
+- Keep, per candidate, its **provenance**: the **PR numbers**, the **reviewer(s)**,
+  and a **short excerpt** of a representative comment (e.g. #1841, @alice — "we always
+  register new endpoints in the router"). This is what you'll show the user to justify
+  the rule.
 
 If the repo has few merged PRs or comments are sparse, say so plainly and lean on
 Step 1's written conventions.
@@ -151,10 +158,20 @@ globs from where each rule applies.
 
 ## Step 4 — Interactive accept/decline menu
 
-Present the shortlist to the user as concise, one-line rule descriptions — **not**
-the full agent files. Each line: what it flags, severity, and provenance. Example:
+Present the shortlist to the user as concise rule descriptions — **not** the full
+agent files. For each rule show three things: **what it flags**, its **severity**, and
+**why you're suggesting it** — i.e. where in *their* repo you found the convention.
+Make the "why" specific and verifiable: name the file and quote the line for written
+conventions, and cite the PR(s), reviewer(s), and a short comment excerpt for mined
+ones. The user should be able to think "yes, that's our rule, and I can see where it
+came from." Example:
 
-> Require a doc comment on every exported function — 🟡 Should fix — *CONTRIBUTING.md + seen in #1234, #1310*
+> **Require a doc comment on every exported function** — 🟡 Should fix
+> *Why:* `CONTRIBUTING.md` says "all exported functions need a doc comment", and
+> reviewers asked for it in #1234 (@alice) and #1310 (@bob).
+
+This provenance is for the user's decision only — it does **not** go into the
+generated agent files (see Step 5).
 
 Use `AskUserQuestion` to let them accept/decline. The tool allows **max 4 options
 per question** (multi-select within those 4), so present candidates in batches of ≤4
@@ -177,9 +194,12 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   generated agents must not be able to **block** anyone's PR before the team trusts
   them — never set `conclusion: failure` here. Tell the user the agents ship advisory
   and they can flip one to blocking later.
-- Body: specific "flag X when Y" instructions, explicit severity levels, a
-  **"permission to do nothing"** clause to suppress false positives, and a
-  **provenance line per rule** (the source file and/or PR numbers it came from).
+- Body: specific "flag X when Y" instructions, explicit severity levels, and a
+  **"permission to do nothing"** clause to suppress false positives.
+- **No provenance in the agent body.** Don't write "Source", "seen in #1234", or any
+  citation into the `.md` — Macroscope reads the body as instructions at runtime, so a
+  citation is noise it might act on. Provenance belongs in the proposal (Step 4) and
+  the PR description (below), not in the file the agent runs.
 
 **Do not disturb the user's working state.** They may have uncommitted work or be on
 a feature branch — never stash their changes, switch their checkout, or branch off
@@ -199,8 +219,17 @@ git -C "$WT" commit -m "Add Macroscope check run agents"
 git -C "$WT" push -u origin "$BRANCH"
 gh pr create --repo "$REPO" --base "$DEFAULT" --head "$BRANCH" \
   --title "Add Macroscope check run agents" \
-  --body "Generated from this repo's conventions and merged-PR review history. Agents are advisory (neutral) and won't block PRs. Review the files, then merge to activate."
+  --body-file "$WT/pr-body.md"     # compose this first (see below); never commit it
 ```
+
+**Compose the PR description with the provenance** that you kept out of the agent
+files — so the "why" is preserved for whoever reviews or revisits the PR. Write it to
+a temp file (e.g. `$WT/pr-body.md`, which is **not** inside `.macroscope/` so it's
+never staged/committed) and pass it via `--body-file`. Include:
+- a one-line intro noting the agents are **advisory (neutral)** and won't block PRs;
+- a **"Why these rules"** section: one bullet per rule with where it came from — the
+  convention file + quoted line, and/or the PR(s), reviewer(s), and comment excerpt;
+- a closing line: review the files, then merge to activate.
 
 Notes:
 - If `$BRANCH` already exists from a prior run, use a fresh name (e.g. add a `-2`

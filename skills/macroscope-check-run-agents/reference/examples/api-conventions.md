@@ -29,9 +29,6 @@ is not wired into the central router in `src/routes/index.ts`.
 
 **Don't flag:** edits to existing handlers, or internal helpers that aren't routes.
 
-**Source:** CONTRIBUTING.md ("every endpoint must be registered in the router");
-recurring review comments in #1841, #1902, #1977.
-
 ### Handlers must return the `Result` type, not throw — 🟡 Should fix
 
 **What to flag:** a route handler that `throw`s for an expected error path instead
@@ -40,8 +37,6 @@ of returning the project's `Result`/`ApiError` envelope.
 **Don't flag:** truly unexpected/programmer errors (assertions, invariant
 violations) — throwing there is fine.
 
-**Source:** docs/error-handling.md; review comments in #1755, #1888.
-
 ### Breaking response-shape changes need a version bump — 🔴 Must fix
 
 **What to flag:** a removed or renamed field, or a changed type, on an existing
@@ -49,5 +44,3 @@ response model under `src/api/**` without a corresponding bump in `API_VERSION` 
 a new versioned route).
 
 **Don't flag:** additive changes (new optional fields).
-
-**Source:** docs/versioning.md ("never break a shipped response shape silently").

@@ -16,9 +16,13 @@ the generated agent files. Merge to activate; backtest against a real PR to vali
 2. **Mines** recent merged PRs for **recurring human review comments** — the rules
    your team enforces by hand today (skipping one-off bug findings, which the
    built-in Correctness agent already covers).
-3. **Recommends** up to 6 of the strongest candidates as one-line descriptions and
-   lets you accept/decline each in an interactive menu. Fewer if the repo doesn't
-   hold 6 genuine conventions — it won't pad the list with weak ideas.
+3. **Recommends** up to 6 of the strongest candidates and lets you accept/decline each
+   in an interactive menu. Each suggestion shows **why** — the exact file and line, or
+   the PRs and reviewer comments in *your* repo where it found the convention. Fewer
+   than 6 if the repo doesn't hold that many genuine conventions — it won't pad the
+   list with weak ideas. (Provenance is shown to you and recorded in the PR
+   description, but kept out of the agent files so it can't confuse the agent at
+   runtime.)
 4. **Generates** the approved rules as `.macroscope/check-run-agents/*.md` files on a
    new branch (built in an isolated worktree, so your working tree is never touched)
    and **opens a PR** — your review surface. Generated agents are advisory
