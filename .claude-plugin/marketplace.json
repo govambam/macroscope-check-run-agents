@@ -1,5 +1,6 @@
 {
   "name": "macroscope-check-run-agents",
+  "description": "Bootstrap Macroscope check run agents from a repo's conventions and merged-PR review history.",
   "owner": {
     "name": "govambam",
     "url": "https://github.com/govambam"
@@ -8,7 +9,9 @@
     {
       "name": "macroscope-check-run-agents",
       "source": "./",
-      "description": "Bootstrap Macroscope check run agents from a repo's written conventions and merged-PR review history."
+      "description": "Bootstrap Macroscope check run agents from a repo's written conventions and merged-PR review history.",
+      "category": "code-review",
+      "tags": ["macroscope", "check-run-agents", "pull-requests", "conventions"]
     }
   ]
 }
