@@ -1,7 +1,8 @@
 ---
 title: API Conventions
 model: claude-opus-4-6
-effort: medium
+reasoning: high
+effort: high
 input: full_diff
 tools:
   - browse_code

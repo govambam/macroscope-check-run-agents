@@ -68,6 +68,12 @@ and/or as a top-level PR comment.
 
 ## Conventions this skill uses for generated agents
 
+**Frontmatter defaults.** Generated agents use `model: claude-opus-4-6`,
+`reasoning: high`, and `effort: high` (these override Macroscope's lighter defaults in
+the table above). The catches these agents are meant to make — e.g. "an `assert` lets
+the test continue and the next line dereferences a nil" — require multi-step reasoning
+that low/medium effort misses, so the skill opts into the deeper tier by default.
+
 To keep generated agents readable, this skill writes each rule as a `###` section
 with:
 

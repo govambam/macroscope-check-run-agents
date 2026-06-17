@@ -11,8 +11,10 @@ the generated agent files. Merge to activate; backtest against a real PR to vali
 ## What it does
 
 1. **Discovers** your written conventions — `CLAUDE.md`, `AGENTS.md`, cursor rules,
-   `CONTRIBUTING.md`, review skills, PR templates — and reads your existing agents,
-   built-in agents, and linters so it doesn't propose duplicates or noise.
+   `CONTRIBUTING.md`, review skills, PR templates — and reads your existing check run
+   agents (plus the built-in Correctness/Approvability) so it doesn't duplicate them.
+   It deliberately *allows* overlap with linters/CI: if a violation reached review, the
+   linter didn't catch it, so an agent that does is a real save.
 2. **Mines** recent merged PRs for **recurring human review comments** — the rules
    your team enforces by hand today (skipping one-off bug findings, which the
    built-in Correctness agent already covers).

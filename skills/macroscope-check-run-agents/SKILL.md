@@ -81,15 +81,21 @@ Find where rules are already written down. Read each that exists:
 - Review skills: `.claude/skills/**`, `.agents/skills/**` (especially anything review/lint/standards-flavored)
 - Process signals: `.github/PULL_REQUEST_TEMPLATE*`, `.github/CODEOWNERS`
 
-Then read what already exists so you don't duplicate it:
+Then read what already exists so you don't duplicate **another check run agent** —
+that's the only thing worth deduping against:
 
 - `.macroscope/check-run-agents/**` — **existing custom agents**. Anything they cover is off the table.
 - The two **built-in** agents are always on: **Correctness** (runtime bugs) and **Approvability** (merge readiness). Do not propose rules that just restate these.
 
-Finally, read the mechanical enforcement layer **only to exclude** from it:
-
-- Linters/formatters/type-checkers/CI: `.eslintrc*`, `eslint.config.*`, `.prettierrc*`, `tsconfig*.json`, `ruff.toml`/`pyproject.toml`, `.golangci*`, `.rubocop.yml`, `.github/workflows/**`
-- Any rule these already enforce on every PR is a **bad** check run agent (pure noise). Note what's covered and drop those candidates.
+You may also read linter/formatter/type-checker/CI configs (`.eslintrc*`,
+`eslint.config.*`, `.prettierrc*`, `tsconfig*.json`, `ruff.toml`/`pyproject.toml`,
+`.golangci*`, `.rubocop.yml`, `.github/workflows/**`) — but **as a source of
+conventions, not an exclusion filter.** Do *not* drop a candidate just because a
+linter might catch it: if a violation reaches review, the linter didn't catch it
+(disabled inline, never configured, or it can't make the semantic call), and an agent
+that catches the miss is valuable. Overlap with linters is fine — overlap with another
+**check run agent** is the only thing to avoid. See `reference/good-rule-heuristics.md`
+test 3.
 
 Collect each discovered rule with its **provenance**: the **file path** *and* the
 specific **line or short quote** that states the convention (e.g. `CONTRIBUTING.md` →
@@ -143,8 +149,8 @@ Step 1's written conventions.
 ## Step 3 — Rank and group
 
 Merge Step 1 + Step 2 candidates, dedupe, and score each against the rubric in
-`reference/good-rule-heuristics.md` (objective & diff-checkable, recurring,
-not-already-enforced, high value). Drop anything weak.
+`reference/good-rule-heuristics.md` (objective & diff-checkable, recurring, not
+duplicating another check run agent, high value). Drop anything weak.
 
 Take the strongest candidates, **capped at 6**. This is a ceiling, not a target —
 **do not pad to reach it.** If only three rules clear the bar, propose three. A
@@ -189,7 +195,12 @@ Once they've confirmed, tell them what's next before you start writing files —
 Write the accepted rules into `.macroscope/check-run-agents/*.md` following
 `reference/agent-file-format.md` exactly:
 
-- Frontmatter: `title`, `model`, `effort`, `input`, and inferred `include`/`exclude`.
+- Frontmatter: `title`; `model: claude-opus-4-6`; **`reasoning: high`**;
+  **`effort: high`**; `input: full_diff`; and inferred `include`/`exclude`. Default to
+  **high reasoning and high effort** — these agents need multi-step tracing (e.g. "this
+  `assert` lets the test keep running, and the next line dereferences a value that can
+  be nil → panic"), which low/medium effort skips. Don't lower them unless the user
+  asks.
 - **Leave `conclusion` unset** so it defaults to **`neutral`** (advisory). Freshly
   generated agents must not be able to **block** anyone's PR before the team trusts
   them — never set `conclusion: failure` here. Tell the user the agents ship advisory

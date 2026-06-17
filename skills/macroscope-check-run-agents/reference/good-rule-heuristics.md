@@ -1,8 +1,8 @@
 # What makes a good check run agent rule
 
-A check run agent runs on every PR. A bad rule — vague, subjective, or already
-caught elsewhere — trains the team to ignore the agent. Score every candidate on the
-four tests below. A rule should clearly pass all four before you propose it.
+A check run agent runs on every PR. A bad rule — vague, subjective, or a duplicate of
+another check run agent — trains the team to ignore the agent. Score every candidate
+on the four tests below. A rule should clearly pass all four before you propose it.
 
 ## 1. Objective & diff-checkable
 
@@ -27,20 +27,27 @@ Automate things that come up again and again — not one-offs.
 Recurrence is the clearest evidence the team actually cares and that an agent will
 earn its keep.
 
-## 3. Not already enforced
+## 3. Not duplicating another check run agent
 
-If a linter, formatter, type-checker, or CI job already catches it on every PR, a
-check run agent is pure duplicate noise. Read the repo's enforcement layer
-(`.eslintrc*`, `.prettierrc*`, `tsconfig*`, `ruff`/`golangci`/`rubocop`, CI
-workflows) and **exclude** anything they cover. Also exclude what the built-in
-**Correctness** and **Approvability** agents already do, and anything an existing
-`.macroscope/check-run-agents/*` file already covers.
+The only thing worth deduping against is **another check run agent** — an existing
+custom agent in `.macroscope/check-run-agents/*`, or the built-in **Correctness**
+(runtime bugs) and **Approvability** (merge readiness). If a rule just restates what
+one of those already does, drop it.
 
-- Drop: "use 2-space indentation" (Prettier), "no unused vars" (ESLint),
-  "code must type-check" (tsc/CI).
-- Keep: conventions tools *can't* express — "new endpoints need an entry in the
-  changelog", "don't import from `internal/` outside its package", "PRs touching
-  billing need a test under `billing/__tests__`".
+**Overlap with linters, formatters, type-checkers, and CI is fine — often valuable.**
+Do *not* drop a rule because a linter *could* catch it. A linter only helps when it's
+actually configured, enabled, and reliable for that case — in practice rules get
+disabled inline, are never set up, or miss the semantic call entirely. If a PR reaches
+review with the violation still in it, the linter *didn't* catch it, and an agent that
+does is a real save, not noise. Read linter configs to *understand* the team's
+conventions (a custom lint rule is a codified convention worth encoding) — never as a
+reason to exclude a candidate.
+
+- Keep: "prefer `require` over `assert` when a later line dereferences the value" —
+  a linter might flag some assert/require swaps, but it won't reason about the
+  nil-then-deref panic, and a miss ships a flaky test.
+- Drop: a rule that just re-runs the built-in Correctness bug hunt, or repeats a
+  sibling custom agent already in the repo.
 
 ## Conventions, not bugs (the most important filter when mining PRs)
 
@@ -96,8 +103,9 @@ Scope each agent with `include`/`exclude` globs so it only runs on relevant file
 
 ## Anti-patterns — do not propose
 
-- Restating a linter/formatter/type rule.
-- Restating Correctness or Approvability.
+- Restating **another check run agent** — an existing custom agent, or the built-in
+  Correctness / Approvability. (Overlapping with a *linter* is fine; overlapping with
+  another *agent* is the duplication to avoid.)
 - A one-off bug finding from a PR comment dressed up as a rule (see "Conventions,
   not bugs" above) — the Correctness agent already owns this.
 - Subjective taste with no checkable trigger.

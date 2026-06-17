@@ -1,7 +1,8 @@
 ---
 title: Testing
 model: claude-opus-4-6
-effort: low
+reasoning: high
+effort: high
 input: full_diff
 tools:
   - browse_code
