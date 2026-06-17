@@ -79,11 +79,8 @@ only merges if you explicitly choose to.
 
 The optional validation step recreates an existing PR as a fresh one so your live
 Macroscope agents evaluate it as new, then points you to the new PR's Checks tab for
-the real findings. It uses `pr-backtest.sh`, which is **bundled with this skill** at
-`skills/macroscope-check-run-agents/scripts/pr-backtest.sh` — a vendored snapshot of
-[pr-backtest-script](https://github.com/govambam/pr-backtest-script). Nothing is
-downloaded at runtime, so everything that runs is in this one repo for you to read
-before installing. The script does all its work in a disposable temp clone and never
+the real findings. It uses `pr-backtest.sh`, which is bundled with this skill at
+`skills/macroscope-check-run-agents/scripts/pr-backtest.sh`. The script does all its work in a disposable temp clone and never
 touches your checkout; it does push two branches and open a PR (using your `gh` write
 access).
 
