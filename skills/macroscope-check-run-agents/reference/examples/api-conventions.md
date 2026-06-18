@@ -45,8 +45,8 @@ a new versioned route).
 
 ## Output
 
-For each finding, **post an inline review comment on the exact offending line** (file
-+ line), with the severity emoji and a one-sentence explanation of the problem and the
-fix. After the inline comments, post one top-level PR comment listing each finding as a
-single line. If the diff violates none of these rules, post a single top-level comment
-"All clear." and add no inline comments. Never invent findings to fill space.
+For each finding, **post an inline review comment on the exact offending line** (file +
+line), with the severity emoji and a one-sentence explanation of the problem and the
+fix. After the inline comments, post one top-level PR comment that lists each finding on
+a single line. If nothing here applies, post a single top-level comment "All clear." and
+add no inline comments. Never invent findings to fill space.

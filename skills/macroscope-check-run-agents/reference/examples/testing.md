@@ -46,8 +46,8 @@ diff or PR description.
 
 ## Output
 
-For each finding, **post an inline review comment on the exact offending line** (file
-+ line), with the severity emoji and a one-sentence explanation of the problem and the
-fix. After the inline comments, post one top-level PR comment listing each finding as a
-single line. If the PR meets the testing conventions, post a single top-level comment
-"All clear." and add no inline comments. Don't pad with nits or invent findings.
+For each finding, **post an inline review comment on the exact offending line** (file +
+line), with the severity emoji and a one-sentence explanation of the problem and the
+fix. After the inline comments, post one top-level PR comment that lists each finding on
+a single line. If nothing here applies, post a single top-level comment "All clear." and
+add no inline comments. Never invent findings to fill space.

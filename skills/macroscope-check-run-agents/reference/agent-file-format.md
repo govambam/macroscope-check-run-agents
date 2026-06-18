@@ -1,6 +1,7 @@
 # Check run agent file format
 
-Source: https://docs.macroscope.com/check-run-agents
+Source: https://docs.macroscope.com/check-run-agents — synced 2026-06-18. Re-check the
+live docs if anything here looks stale (model list, tool list, frontmatter fields).
 
 Each agent is one `.md` file in `.macroscope/check-run-agents/` at the repo root.
 The filename (minus `.md`) becomes the default title. Agents run on every PR — on
@@ -87,11 +88,18 @@ provenance is noise the agent might try to act on. Provenance is surfaced to the
 elsewhere — in the pre-pick proposal and in the PR description (see `SKILL.md`
 Steps 4–5) — never in the `.md` the agent runs.
 
-**Always require inline review comments.** Every generated agent must end with an
-output-format instruction telling it to post each finding as an **inline review
-comment on the offending line** (severity + one-line explanation/fix), then a
-top-level summary comment, and "All clear." when the diff is clean. Without this the
-agent writes findings into the check-run summary, where they're buried in the Checks
-tab instead of annotating the code. The `examples/` show the exact wording.
+**Always require inline review comments — which need the `modify_pr` tool.** Every
+generated agent must end with the output-format block (see `examples/`) telling it to
+post each finding as an **inline review comment on the offending line** (severity +
+one-line explanation/fix), then a top-level summary comment, and "All clear." when the
+diff is clean. Inline posting is a `modify_pr` capability: if an agent's `tools:` list
+omits `modify_pr`, it physically *cannot* post inline and silently falls back to the
+check-run summary — the exact failure where findings exist but never annotate the code.
+`modify_pr` is in the default tool set, so the safe default is to **omit `tools:`
+entirely**; if you set `tools:` for any reason (e.g. adding `sentry`), the list
+**overrides** the defaults, so you must re-list `modify_pr` (and the other defaults you
+still want).
 
-See `examples/` for two complete agents in this shape.
+See `examples/` for complete agents in this shape — including
+`observability.md`, which shows opting into an integration tool while keeping the
+defaults.

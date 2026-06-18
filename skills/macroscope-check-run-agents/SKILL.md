@@ -23,14 +23,6 @@ backtest.
 before generating anything.** They are the source of truth for the file format and
 for what makes a rule worth automating.
 
-## The one rule you must never break
-
-Macroscope is the *only* thing that runs a check run. **Never** simulate, role-play,
-or approximate a check run yourself (e.g. "let me read the agent and check this
-diff"). The only validation this skill offers is the **true backtest** in Step 6,
-which runs the real Macroscope engine. Do not imply Macroscope evaluated anything
-when it hasn't.
-
 ## Orient the user first
 
 Before doing anything, tell the user in a couple of sentences what's about to
@@ -179,6 +171,11 @@ came from." Example:
 This provenance is for the user's decision only — it does **not** go into the
 generated agent files (see Step 5).
 
+If a candidate rule would depend on an **integration** (e.g. it needs Sentry, a ticket
+tracker, or Slack — see Step 5's "opt into integrations"), say so on that rule's line,
+so the user knows it only does anything once that integration is connected to their
+Macroscope.
+
 Use `AskUserQuestion` to let them accept/decline. The tool allows **max 4 options
 per question** (multi-select within those 4), so present candidates in batches of ≤4
 across one or two questions; instruct the user to check the ones to keep. Keep it to
@@ -200,27 +197,51 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   **high reasoning and high effort** — these agents need multi-step tracing (e.g. "this
   `assert` lets the test keep running, and the next line dereferences a value that can
   be nil → panic"), which low/medium effort skips. Don't lower them unless the user
-  asks.
+  asks. Keep `input: full_diff` as the default; for a strict per-unit rule (e.g. "never
+  log PII in *any* changed file") `input: code_object` runs the agent once per changed
+  object and can be more reliable — use it only when a rule clearly needs that per-file
+  isolation.
 - **Leave `conclusion` unset** so it defaults to **`neutral`** (advisory). Freshly
   generated agents must not be able to **block** anyone's PR before the team trusts
   them — never set `conclusion: failure` here. Tell the user the agents ship advisory
   and they can flip one to blocking later.
 - Body: specific "flag X when Y" instructions, explicit severity levels, and a
   **"permission to do nothing"** clause to suppress false positives.
-- **Every agent must post findings as inline review comments.** Without this,
-  Macroscope dumps findings into the check-run summary (the Checks tab), where they're
-  far less visible and actionable. End each agent body with this output-format
-  instruction (verbatim or close to it):
+- **Every agent must post findings as inline review comments — which requires the
+  `modify_pr` tool.** Inline posting is a `modify_pr` capability: an agent whose
+  `tools:` list omits `modify_pr` physically *cannot* post inline and silently falls
+  back to the check-run summary (the Checks tab), where findings are far less visible —
+  exactly the "issues in the summary, nothing inline" failure. `modify_pr` is in the
+  default tool set, so the safe default is to **omit `tools:` entirely**. If you do set
+  `tools:` (see "opt into integrations" below), the list **overrides** the defaults —
+  you must re-list `modify_pr` and any other defaults you still want. End each agent
+  body with this exact output block (use it verbatim so every generated agent is
+  consistent):
 
+  > ## Output
+  >
   > For each finding, **post an inline review comment on the exact offending line**
-  > (file + line), with the severity emoji and a one-sentence explanation of the
-  > problem and the fix. After the inline comments, post one top-level PR comment that
-  > lists each finding as a single line. If the diff is clean, post a single top-level
-  > comment "All clear." and add no inline comments. Never invent findings to fill space.
+  > (file + line), with the severity emoji and a one-sentence explanation of the problem
+  > and the fix. After the inline comments, post one top-level PR comment that lists each
+  > finding on a single line. If nothing here applies, post a single top-level comment
+  > "All clear." and add no inline comments. Never invent findings to fill space.
 - **No provenance in the agent body.** Don't write "Source", "seen in #1234", or any
   citation into the `.md` — Macroscope reads the body as instructions at runtime, so a
   citation is noise it might act on. Provenance belongs in the proposal (Step 4) and
   the PR description (below), not in the file the agent runs.
+- **Opt into integrations when a rule needs state beyond the diff.** The default tools
+  only see code. If an accepted rule needs external state — unresolved Sentry errors on
+  a touched file, the status of a referenced ticket, a Slack ping on a 🔴 finding — add
+  the matching tool from the table in `reference/agent-file-format.md` (`sentry`,
+  `issue_tracking_tools`, `slack`, …) to `tools:`, and **re-list the defaults you still
+  need (especially `modify_pr`)** since `tools:` overrides them. The tool silently
+  no-ops if that integration isn't connected, so flag the dependency to the user in the
+  proposal (Step 4). `reference/examples/observability.md` shows the pattern.
+- **For a long, already-written convention, you may reference it instead of restating
+  it.** If `CLAUDE.md`/`AGENTS.md` documents a rule at length, the agent body can point
+  to that file ("follow the API-error conventions in `CLAUDE.md`") to keep the two in
+  sync — but keep a concrete "flag X when Y" trigger inline so the agent still has
+  something checkable. Default to inlining short rules.
 
 **Do not disturb the user's working state.** They may have uncommitted work or be on
 a feature branch — never stash their changes, switch their checkout, or branch off
@@ -291,8 +312,9 @@ Never run a bare interactive `gh pr merge`.
 ## Step 6 — Backtest (validate against a real PR)
 
 The agents must already be live on the default branch (the menu in Step 5 ensures
-this). The backtest runs the **real Macroscope engine** — you never simulate a check
-run yourself.
+this). Validation only happens through this real backtest, because the agents only
+execute inside Macroscope's engine on a real PR — so never present a simulated or
+hand-reasoned evaluation as if Macroscope produced it.
 
 **First, choose which PR to backtest.** Ask the user (`AskUserQuestion`, two options):
 

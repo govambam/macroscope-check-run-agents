@@ -102,10 +102,22 @@ skills/
     reference/
       agent-file-format.md         # frontmatter schema + body conventions
       good-rule-heuristics.md      # what makes a rule worth automating
-      examples/                    # two exemplar agents
+      examples/                    # exemplar agents (incl. a Sentry/integration one)
     scripts/
       pr-backtest.sh               # bundled backtest script (vendored snapshot)
 ```
+
+## Maintenance
+
+- **Pinned model.** Generated agents pin `claude-opus-4-6`. It is referenced in four
+  places — `skills/macroscope-check-run-agents/SKILL.md` (Step 5),
+  `reference/agent-file-format.md`, and each `reference/examples/*.md`. Bump them
+  together (e.g. to `claude-opus-4-8`) if you change the default.
+- **Vendored from upstream.** `reference/agent-file-format.md` mirrors
+  [docs.macroscope.com/check-run-agents](https://docs.macroscope.com/check-run-agents)
+  and carries a "synced" date; `scripts/pr-backtest.sh` is a commit-pinned snapshot of
+  [pr-backtest-script](https://github.com/govambam/pr-backtest-script). Re-sync each and
+  bump its stamp when the upstream changes.
 
 ## License
 
