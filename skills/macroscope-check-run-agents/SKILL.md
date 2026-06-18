@@ -17,7 +17,9 @@ You help a Macroscope user turn the conventions their team *already follows* int
 custom check run agents — the AI agents that run on every PR. You do this by
 reading what the repo documents and by mining what human reviewers actually say in
 merged PRs, then generating real agent files for the user to review, merge, and
-backtest.
+backtest. When the repo has thin conventions to mine — or whenever a vetted check would
+add value the repo doesn't already have — you can also offer a **Macroscope template**
+(curated starting points bundled in `templates/`) instead of inventing a rule.
 
 **Read `reference/agent-file-format.md` and `reference/good-rule-heuristics.md`
 before generating anything.** They are the source of truth for the file format and
@@ -154,6 +156,38 @@ under one agent the way Macroscope's own examples do (e.g. one "API conventions"
 agent, one "Testing" agent) — not one agent per rule. Infer `include`/`exclude`
 globs from where each rule applies.
 
+### Add applicable Macroscope templates
+
+The skill bundles a set of **Macroscope-recommended templates** in `templates/` (see
+`templates/README.md` for the catalog) — vetted check run agents that make a good
+starting point. Offer them when they fit, using signals you already gathered:
+
+- **ticket-requirements** — recent PRs reference tickets (`PROJ-123`-style IDs in PR
+  titles/branches, which you saw in Step 2). Needs the team's issue-tracker
+  integration connected; flag that dependency in the proposal.
+- **language-idioms** — the repo is mostly Go and/or TypeScript.
+- **architecture-standards** — multiple services/packages, or a monorepo with real
+  module boundaries.
+- **accessibility** — the repo has a frontend (JSX/TSX/HTML/components).
+- **security-review** — broadly applicable; favor it where the repo handles untrusted
+  input, auth, or a web surface.
+- **guardrails** — broadly applicable and cheap.
+
+Two triggers, mirroring how you weigh mined rules:
+
+- **Thin or no mined conventions** → lead with the most applicable templates rather
+  than padding with weak, invented rules.
+- **Solid mined conventions** → still offer the top 1–2 applicable templates that cover
+  something the mined rules and existing agents *don't*.
+
+**Dedupe like any agent.** A template *is* a check run agent — skip it if a mined rule,
+an existing `.macroscope/check-run-agents/*`, or a built-in already covers it (e.g.
+don't offer `security-review` to a repo that already has a security agent).
+
+Templates count toward the **same caps** as mined rules (≤6 candidates, 2–4 agents) —
+don't blow the budget just because templates are easy to add. Don't tailor them: they
+are added **verbatim** (see Step 5).
+
 ## Step 4 — Interactive accept/decline menu
 
 Present the shortlist to the user as concise rule descriptions — **not** the full
@@ -175,6 +209,14 @@ If a candidate rule would depend on an **integration** (e.g. it needs Sentry, a 
 tracker, or Slack — see Step 5's "opt into integrations"), say so on that rule's line,
 so the user knows it only does anything once that integration is connected to their
 Macroscope.
+
+**Macroscope templates appear in this same menu, labeled "Macroscope template."** Their
+"why" is not a repo citation — it's "a recommended check that applies to your repo
+because <signal>" (the applicability reason from Step 3). Two call-outs to make on a
+template's line: (a) `ticket-requirements` only works once the issue-tracker
+integration is connected; (b) a template that ships **blocking** (`conclusion: failure`
+— `security-review`, `guardrails`) *can fail a PR*, unlike the advisory rules you
+author — say so explicitly so the user opts in knowingly.
 
 Use `AskUserQuestion` to let them accept/decline. The tool allows **max 4 options
 per question** (multi-select within those 4), so present candidates in batches of ≤4
@@ -242,6 +284,20 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   to that file ("follow the API-error conventions in `CLAUDE.md`") to keep the two in
   sync — but keep a concrete "flag X when Y" trigger inline so the agent still has
   something checkable. Default to inlining short rules.
+
+**Accepted Macroscope templates are copied verbatim — not regenerated.** For each
+accepted template, copy its file from this skill's `templates/<id>.md` into
+`.macroscope/check-run-agents/` **unchanged**. Resolve the bundled path the same way
+Step 6 resolves the backtest script (try `${CLAUDE_PLUGIN_ROOT}/skills/macroscope-check-run-agents/templates/`,
+`$HOME/.claude/skills/macroscope-check-run-agents/templates/`, then
+`.claude/skills/macroscope-check-run-agents/templates/`). Keep the template's
+frontmatter as-is — **including a `conclusion: failure`** where it sets one (those ship
+blocking on purpose) — and its own body/output handling (templates carry their own
+inline-comment instructions; do **not** append the generated-agent output block). The
+"leave `conclusion` neutral", "high reasoning/effort", "add the output block", and
+"infer globs" rules above apply to the **mined** agents you author — *not* to templates.
+In the PR description, a template's "why" line reads "Macroscope-recommended template —
+applies because <signal>", not a repo file/PR citation.
 
 **Do not disturb the user's working state.** They may have uncommitted work or be on
 a feature branch — never stash their changes, switch their checkout, or branch off

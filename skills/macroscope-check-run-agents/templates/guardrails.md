@@ -8,6 +8,7 @@ conclusion: failure
 tools:
   - browse_code
   - git_tools
+  - modify_pr
 ---
 
 ## Process

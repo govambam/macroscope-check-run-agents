@@ -10,11 +10,14 @@ already check.
 > `jon/add-check-run-templates`), file
 > `targets/app/src/modules/code-reviews/CheckRunAgentTemplates/data.ts`. When the
 > templates ship in the docs, repoint to `docs.macroscope.com` and re-sync this folder
-> + the stamp. UI-only fields from the source (`iconName`, `color`) are intentionally
-> dropped; each template here is a directly-usable `.md` agent file.
+> + the stamp. Two deliberate changes from source: UI-only fields (`iconName`, `color`)
+> are dropped, and each template's `tools:` is normalized to include `modify_pr` (so
+> findings post as inline comments, not just the check-run summary). Each template here
+> is a directly-usable `.md` agent file.
 >
-> **Not yet wired into the skill.** The agent files exist, but `SKILL.md` does not yet
-> reference or recommend them — that logic is still to be designed.
+> **Wired into the skill.** `SKILL.md` assesses template applicability in Step 3, offers
+> fitting templates in the Step 4 menu (labeled "Macroscope template"), and copies
+> accepted ones **verbatim** in Step 5.
 
 ## The templates
 
@@ -27,17 +30,18 @@ already check.
 | `accessibility.md` | a11y in UI changes: reachable controls, alt text, labeled inputs | `full_diff` | `neutral` | defaults |
 | `guardrails.md` | Stray `console.log`/`print`, untracked TODO/FIXME, dead code | `full_diff` | **`failure`** | low reasoning/effort (cheap) |
 
-## Things to weigh when we design the recommend logic
+## Design decisions (wired into `SKILL.md`)
 
-- **Two templates ship `conclusion: failure` (blocking)** — `security-review` and
-  `guardrails`. That differs from the skill's own generated-agent default
-  (`neutral`/advisory). Decide whether to preserve the templates' blocking default or
-  downgrade to advisory on first add.
-- **`ticket-requirements` only works with an issue-tracker integration** connected to
-  the customer's Macroscope; otherwise it no-ops. Gate recommending it on that.
-- **Several templates omit `modify_pr`/`git_tools`** that the source author left out
-  (e.g. `architecture-standards`, `accessibility`). If we adopt the skill's
-  "inline comments require `modify_pr`" rule, we may need to reconcile.
-- **Applicability varies by repo** — accessibility only matters for UIs; language-idioms
-  is language-specific; architecture-standards suits multi-service/monorepos. The
-  recommend logic should be signal-driven, not one-size-fits-all.
+- **Blocking preserved.** `security-review` and `guardrails` keep `conclusion: failure`
+  — they ship blocking on purpose. The Step 4 menu flags this so the user opts in
+  knowingly. (Mined agents the skill *authors* still default to advisory `neutral`.)
+- **Tools normalized for inline posting.** Every template's `tools:` includes
+  `modify_pr` (the one deviation from source), so findings post as inline comments, not
+  only the check-run summary.
+- **Added verbatim.** Accepted templates are copied unchanged — no glob tailoring, no
+  body edits.
+- **Same cap.** Templates count toward the skill's ≤6-candidate / 2–4-agent budget.
+- **Signal-driven and deduped.** A template is offered only when a repo signal fits
+  (language, structure, UI presence, ticket usage) and isn't already covered by a mined
+  rule or an existing agent. `ticket-requirements` is gated on an issue-tracker
+  integration being connected.

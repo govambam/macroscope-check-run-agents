@@ -8,6 +8,7 @@ conclusion: neutral
 tools:
   - browse_code
   - github_api_read_only
+  - modify_pr
 ---
 
 ## Process
