@@ -3,8 +3,8 @@ name: macroscope-check-run-agents
 description: >
   Bootstrap Macroscope check run agents for the current repository. Studies the
   project's written conventions (CLAUDE.md, AGENTS.md, cursor rules, CONTRIBUTING,
-  review skills) and mines recent merged PRs for recurring human review comments,
-  recommends a handful of high-value rules, and generates ready-to-edit
+  review skills) plus Macroscope's curated templates, recommends a handful of
+  high-value rules, and generates ready-to-edit
   `.macroscope/check-run-agents/*.md` files on a branch + PR. Use when the user
   wants to create, set up, generate, or discover check run agents for their repo,
   or asks "what should Macroscope check on my PRs?". Run this from inside the
@@ -15,9 +15,9 @@ description: >
 
 You help a Macroscope user turn the conventions their team *already follows* into
 custom check run agents — the AI agents that run on every PR. You do this by
-reading what the repo documents and by mining what human reviewers actually say in
-merged PRs, then generating real agent files for the user to review, merge, and
-backtest. When the repo has thin conventions to mine — or whenever a vetted check would
+reading what the repo documents — its rule files, contributor docs, and review skills —
+then generating real agent files for the user to review, merge, and backtest. When the
+repo has thin conventions to mine — or whenever a vetted check would
 add value the repo doesn't already have — you can also offer a **Macroscope template**
 (curated starting points bundled in `templates/`) instead of inventing a rule.
 
@@ -30,9 +30,9 @@ for what makes a rule worth automating.
 Before doing anything, tell the user in a couple of sentences what's about to
 happen, so the process isn't a black box. Cover the whole arc:
 
-> I'll research this repo — your written conventions (CLAUDE.md, CONTRIBUTING, etc.)
-> and the review comments on your recent merged PRs — to find good check run agent
-> candidates, then propose them for you to accept or decline. Once you confirm which
+> I'll research this repo — your written conventions (CLAUDE.md, CONTRIBUTING, cursor
+> rules, review skills, etc.) — to find good check run agent candidates, then propose
+> them for you to accept or decline. Once you confirm which
 > to keep, I'll generate the agent files and open a PR. You can review, edit (or ask
 > me to edit), and merge it when you're happy — merging is what activates the agents.
 > After that we can stop, or run a sanity-check backtest against one of your past PRs.
@@ -68,22 +68,50 @@ echo "Target: $REPO  (default branch: $DEFAULT)"
 
 ## Step 1 — Discover written conventions (static)
 
-Find where rules are already written down. Read each that exists:
+This is the primary signal, so make it fast *and* thorough — but read it from **the
+default branch the agents will actually run against (`origin/$DEFAULT`), not the current
+working tree.** The user is often on a feature branch, or their checkout is behind the
+remote; `git ls-files` and the Read tool would then show the wrong fileset — e.g. miss a
+`CONTRIBUTING.md` that's on `main` but not on their branch. The agents run against the
+default branch, so that's the only fileset that matters. Fetch it, list candidate files
+from it in one sweep, then dump them all in one pass:
 
-- Agent/assistant rule files: `CLAUDE.md`, `AGENTS.md` (root **and** nested), `.cursor/rules/**`, `.cursorrules`, `.github/copilot-instructions.md`
-- Human docs: `CONTRIBUTING*.md`, `STYLEGUIDE*.md`, `docs/**` (conventions/standards pages), ADRs (`docs/adr/**`, `doc/adr/**`)
-- Review skills: `.claude/skills/**`, `.agents/skills/**` (especially anything review/lint/standards-flavored)
-- Process signals: `.github/PULL_REQUEST_TEMPLATE*`, `.github/CODEOWNERS`
+```bash
+git fetch -q origin "$DEFAULT"
+FILES=$(git ls-tree -r --name-only "origin/$DEFAULT" \
+  | grep -iE '(^|/)(CLAUDE|AGENTS|CONTRIBUTING|STYLEGUIDE|copilot-instructions)\.md$|\.cursorrules$|(^|/)\.cursor/rules/|(^|/)\.github/(PULL_REQUEST_TEMPLATE|CODEOWNERS)|(^|/)(\.claude|\.agents)/skills/|(^|/)\.macroscope/check-run-agents/')
+echo "$FILES"
+for f in $FILES; do printf '\n===== %s =====\n' "$f"; git show "origin/$DEFAULT:$f"; done
+```
 
-Then read what already exists so you don't duplicate **another check run agent** —
-that's the only thing worth deduping against:
+That single pass reads everything from the right ref — faster than per-file Read calls
+*and* correct regardless of the current branch. (Only if there's no `origin`/no network,
+fall back to the working tree — and **say so**, since discovery then reflects the current
+branch, which may not be what ships.)
+
+Prioritize what you read by signal:
+
+- **High signal — read fully:** agent/assistant rule files (`CLAUDE.md`, `AGENTS.md`,
+  root **and** nested; `.cursor/rules/**`, `.cursorrules`, `.github/copilot-instructions.md`),
+  `CONTRIBUTING*.md`, `STYLEGUIDE*.md`, and review skills (`.claude/skills/**`,
+  `.agents/skills/**` — especially review/lint/standards-flavored).
+- **Process signals — skim:** `.github/PULL_REQUEST_TEMPLATE*`, `.github/CODEOWNERS`.
+- **`docs/**` and ADRs (`docs/adr/**`, `doc/adr/**`) — sample, don't crawl.** They're
+  large and mostly low-yield (and not in the sweep above). Only reach for them — via
+  `git show "origin/$DEFAULT:<path>"` — if the high-signal files are thin, and even then
+  read just the pages whose path/name signals conventions or standards. **Never read an
+  entire docs tree** — it's the biggest hidden time sink in this step.
+
+The sweep also surfaces existing **check run agents** (`.macroscope/check-run-agents/**`),
+which is the only thing worth deduping against:
 
 - `.macroscope/check-run-agents/**` — **existing custom agents**. Anything they cover is off the table.
 - The two **built-in** agents are always on: **Correctness** (runtime bugs) and **Approvability** (merge readiness). Do not propose rules that just restate these.
 
 You may also read linter/formatter/type-checker/CI configs (`.eslintrc*`,
 `eslint.config.*`, `.prettierrc*`, `tsconfig*.json`, `ruff.toml`/`pyproject.toml`,
-`.golangci*`, `.rubocop.yml`, `.github/workflows/**`) — but **as a source of
+`.golangci*`, `.rubocop.yml`, `.github/workflows/**`) — again from `origin/$DEFAULT`
+(`git show`), and **as a source of
 conventions, not an exclusion filter.** Do *not* drop a candidate just because a
 linter might catch it: if a violation reaches review, the linter didn't catch it
 (disabled inline, never configured, or it can't make the semantic call), and an agent
@@ -97,52 +125,9 @@ specific **line or short quote** that states the convention (e.g. `CONTRIBUTING.
 they can see exactly where in their repo the rule came from — capture enough to be
 convincing, not just a filename.
 
-## Step 2 — Mine merged PRs (behavioral)
+## Step 2 — Rank and group
 
-The strongest signal is what reviewers repeat. Pull recent merged PRs and their
-**human** review comments:
-
-```bash
-# Recent merged PRs
-gh pr list --repo "$REPO" --state merged --limit 30 --json number,title,author,mergedAt,url
-
-# For each PR you deep-fetch, pull inline review comments + review summaries
-gh api --paginate "repos/$REPO/pulls/<number>/comments" --jq '.[] | {user:.user.login, body:.body, path:.path}'
-gh pr view <number> --repo "$REPO" --json reviews --jq '.reviews[] | {user:.author.login, state:.state, body:.body}'
-```
-
-**Mind the API cost.** Deep-fetching comments is (at least) one API call *per PR*.
-Don't fan out across hundreds of PRs — cap the deep-fetch to roughly the **20–30 most
-recent merged PRs**. If the repo is much larger, say so and sample the recent window
-rather than the whole history.
-
-Then:
-
-- **Filter out bots.** Exclude `*[bot]`, `macroscopeapp`, `dependabot`, `codecov`, `github-actions`, and any CI/automation accounts. You want **humans**.
-- **Cluster into themes.** Group comments that express the same underlying rule
-  ("always add a changeset", "don't log PII", "new endpoints need a test",
-  "use the `Result` type not exceptions").
-- **Keep conventions, drop bug reports.** A comment pointing out a *specific bug in
-  this PR* ("this will null-deref if `user` is nil", "off-by-one here") is **not** a
-  check run agent — it's a one-off correctness finding, and Macroscope's built-in
-  **Correctness** agent already covers that whole class. Only keep a comment if it
-  expresses a **generalizable, repeatable rule** that would apply to future PRs the
-  reviewer hasn't seen yet. If you can't restate it as "on any PR, flag X when Y"
-  without naming this PR's specifics, it's a bug, not a rule — drop it. See the
-  "Conventions, not bugs" section in `reference/good-rule-heuristics.md`.
-- **Recurrence is the signal.** A theme raised across **multiple PRs / multiple
-  reviewers** is a strong candidate. A one-off nit is not — drop it.
-- Keep, per candidate, its **provenance**: the **PR numbers**, the **reviewer(s)**,
-  and a **short excerpt** of a representative comment (e.g. #1841, @alice — "we always
-  register new endpoints in the router"). This is what you'll show the user to justify
-  the rule.
-
-If the repo has few merged PRs or comments are sparse, say so plainly and lean on
-Step 1's written conventions.
-
-## Step 3 — Rank and group
-
-Merge Step 1 + Step 2 candidates, dedupe, and score each against the rubric in
+Take the Step 1 candidates, dedupe, and score each against the rubric in
 `reference/good-rule-heuristics.md` (objective & diff-checkable, recurring, not
 duplicating another check run agent, high value). Drop anything weak.
 
@@ -162,9 +147,10 @@ The skill bundles a set of **Macroscope-recommended templates** in `templates/` 
 `templates/README.md` for the catalog) — vetted check run agents that make a good
 starting point. Offer them when they fit, using signals you already gathered:
 
-- **ticket-requirements** — recent PRs reference tickets (`PROJ-123`-style IDs in PR
-  titles/branches, which you saw in Step 2). Needs the team's issue-tracker
-  integration connected; flag that dependency in the proposal.
+- **ticket-requirements** — the team links work to tickets. Check cheap *local* signals:
+  the PR template asking for a ticket link (seen in Step 1), or `PROJ-123`-style IDs in
+  branch/commit names (`git log --oneline -30`, `git branch -a`). Needs the team's
+  issue-tracker integration connected; flag that dependency in the proposal.
 - **language-idioms** — the repo is mostly Go and/or TypeScript.
 - **architecture-standards** — multiple services/packages, or a monorepo with real
   module boundaries.
@@ -173,46 +159,44 @@ starting point. Offer them when they fit, using signals you already gathered:
   input, auth, or a web surface.
 - **guardrails** — broadly applicable and cheap.
 
-Two triggers, mirroring how you weigh mined rules:
+Two triggers, mirroring how you weigh discovered rules:
 
-- **Thin or no mined conventions** → lead with the most applicable templates rather
+- **Thin or no discovered conventions** → lead with the most applicable templates rather
   than padding with weak, invented rules.
-- **Solid mined conventions** → still offer the top 1–2 applicable templates that cover
-  something the mined rules and existing agents *don't*.
+- **Solid discovered conventions** → still offer the top 1–2 applicable templates that
+  cover something the discovered rules and existing agents *don't*.
 
-**Dedupe like any agent.** A template *is* a check run agent — skip it if a mined rule,
+**Dedupe like any agent.** A template *is* a check run agent — skip it if a discovered rule,
 an existing `.macroscope/check-run-agents/*`, or a built-in already covers it (e.g.
 don't offer `security-review` to a repo that already has a security agent).
 
-Templates count toward the **same caps** as mined rules (≤6 candidates, 2–4 agents) —
+Templates count toward the **same caps** as discovered rules (≤6 candidates, 2–4 agents) —
 don't blow the budget just because templates are easy to add. Don't tailor them: they
-are added **verbatim** (see Step 5).
+are added **verbatim** (see Step 4).
 
-## Step 4 — Interactive accept/decline menu
+## Step 3 — Interactive accept/decline menu
 
 Present the shortlist to the user as concise rule descriptions — **not** the full
 agent files. For each rule show three things: **what it flags**, its **severity**, and
 **why you're suggesting it** — i.e. where in *their* repo you found the convention.
-Make the "why" specific and verifiable: name the file and quote the line for written
-conventions, and cite the PR(s), reviewer(s), and a short comment excerpt for mined
-ones. The user should be able to think "yes, that's our rule, and I can see where it
-came from." Example:
+Make the "why" specific and verifiable: name the file and quote the line where the
+convention is written. The user should be able to think "yes, that's our rule, and I can
+see where it came from." Example:
 
 > **Require a doc comment on every exported function** — 🟡 Should fix
-> *Why:* `CONTRIBUTING.md` says "all exported functions need a doc comment", and
-> reviewers asked for it in #1234 (@alice) and #1310 (@bob).
+> *Why:* `CONTRIBUTING.md` says "all exported functions need a doc comment".
 
 This provenance is for the user's decision only — it does **not** go into the
-generated agent files (see Step 5).
+generated agent files (see Step 4).
 
 If a candidate rule would depend on an **integration** (e.g. it needs Sentry, a ticket
-tracker, or Slack — see Step 5's "opt into integrations"), say so on that rule's line,
+tracker, or Slack — see Step 4's "opt into integrations"), say so on that rule's line,
 so the user knows it only does anything once that integration is connected to their
 Macroscope.
 
 **Macroscope templates appear in this same menu, labeled "Macroscope template."** Their
 "why" is not a repo citation — it's "a recommended check that applies to your repo
-because <signal>" (the applicability reason from Step 3). Two call-outs to make on a
+because <signal>" (the applicability reason from Step 2). Two call-outs to make on a
 template's line: (a) `ticket-requirements` only works once the issue-tracker
 integration is connected; (b) a template that ships **blocking** (`conclusion: failure`
 — `security-review`, `guardrails`) *can fail a PR*, unlike the advisory rules you
@@ -229,7 +213,7 @@ that a nit", "scope it to `api/`"). Only the accepted rules proceed.
 Once they've confirmed, tell them what's next before you start writing files — e.g.
 "Got it. I'll write these as agent files and open a PR you can review." Then go.
 
-## Step 5 — Generate on an isolated branch and open a PR
+## Step 4 — Generate on an isolated branch and open a PR
 
 Write the accepted rules into `.macroscope/check-run-agents/*.md` following
 `reference/agent-file-format.md` exactly:
@@ -269,7 +253,7 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   > "All clear." and add no inline comments. Never invent findings to fill space.
 - **No provenance in the agent body.** Don't write "Source", "seen in #1234", or any
   citation into the `.md` — Macroscope reads the body as instructions at runtime, so a
-  citation is noise it might act on. Provenance belongs in the proposal (Step 4) and
+  citation is noise it might act on. Provenance belongs in the proposal (Step 3) and
   the PR description (below), not in the file the agent runs.
 - **Opt into integrations when a rule needs state beyond the diff.** The default tools
   only see code. If an accepted rule needs external state — unresolved Sentry errors on
@@ -278,7 +262,7 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
   `issue_tracking_tools`, `slack`, …) to `tools:`, and **re-list the defaults you still
   need (especially `modify_pr`)** since `tools:` overrides them. The tool silently
   no-ops if that integration isn't connected, so flag the dependency to the user in the
-  proposal (Step 4). `reference/examples/observability.md` shows the pattern.
+  proposal (Step 3). `reference/examples/observability.md` shows the pattern.
 - **For a long, already-written convention, you may reference it instead of restating
   it.** If `CLAUDE.md`/`AGENTS.md` documents a rule at length, the agent body can point
   to that file ("follow the API-error conventions in `CLAUDE.md`") to keep the two in
@@ -288,14 +272,14 @@ Write the accepted rules into `.macroscope/check-run-agents/*.md` following
 **Accepted Macroscope templates are copied verbatim — not regenerated.** For each
 accepted template, copy its file from this skill's `templates/<id>.md` into
 `.macroscope/check-run-agents/` **unchanged**. Resolve the bundled path the same way
-Step 6 resolves the backtest script (try `${CLAUDE_PLUGIN_ROOT}/skills/macroscope-check-run-agents/templates/`,
+Step 5 resolves the backtest script (try `${CLAUDE_PLUGIN_ROOT}/skills/macroscope-check-run-agents/templates/`,
 `$HOME/.claude/skills/macroscope-check-run-agents/templates/`, then
 `.claude/skills/macroscope-check-run-agents/templates/`). Keep the template's
 frontmatter as-is — **including a `conclusion: failure`** where it sets one (those ship
 blocking on purpose) — and its own body/output handling (templates carry their own
 inline-comment instructions; do **not** append the generated-agent output block). The
 "leave `conclusion` neutral", "high reasoning/effort", "add the output block", and
-"infer globs" rules above apply to the **mined** agents you author — *not* to templates.
+"infer globs" rules above apply to the **discovered-convention** agents you author — *not* to templates.
 In the PR description, a template's "why" line reads "Macroscope-recommended template —
 applies because <signal>", not a repo file/PR citation.
 
@@ -308,7 +292,8 @@ PR contains *only* the agent files:
 ```bash
 git fetch origin "$DEFAULT"
 BRANCH=macroscope/check-run-agents
-WT=$(mktemp -d)
+mkdir -p "$HOME/.cache/macroscope-check-run-agents"
+WT=$(mktemp -d "$HOME/.cache/macroscope-check-run-agents/wt.XXXXXX")  # predictable parent (so writes here can be pre-approved); mktemp keeps the dir unique + fresh
 git worktree add -b "$BRANCH" "$WT" "origin/$DEFAULT"
 mkdir -p "$WT/.macroscope/check-run-agents"
 # ... write the agent files into "$WT/.macroscope/check-run-agents/" ...
@@ -317,19 +302,41 @@ git -C "$WT" commit -m "Add Macroscope check run agents"
 git -C "$WT" push -u origin "$BRANCH"
 gh pr create --repo "$REPO" --base "$DEFAULT" --head "$BRANCH" \
   --title "Add Macroscope check run agents" \
-  --body-file "$WT/pr-body.md"     # compose this first (see below); never commit it
+  --body-file - <<'MACROSCOPE_PR_BODY'
+<the full PR description goes here, verbatim — compose it per "the PR body" below>
+MACROSCOPE_PR_BODY
 ```
 
 **Compose the PR description with the provenance** that you kept out of the agent
-files — so the "why" is preserved for whoever reviews or revisits the PR. Write it to
-a temp file (e.g. `$WT/pr-body.md`, which is **not** inside `.macroscope/` so it's
-never staged/committed) and pass it via `--body-file`. Include:
+files — so the "why" is preserved for whoever reviews or revisits the PR. **Stream it
+straight to `gh` over stdin** — no temp file, nothing to stage or clean up, and no extra
+write prompt. `--body-file -` reads the body from stdin (confirmed in `gh pr create
+--help`), and a **quoted** heredoc (`<<'MACROSCOPE_PR_BODY'`) passes every byte verbatim,
+so backticks, `$`, and emoji in the body are never expanded or executed. Two rules make
+this bulletproof, and you must follow both:
+- the closing `MACROSCOPE_PR_BODY` sits at the **start of its own line** — column 0, no
+  leading spaces or tabs — or the heredoc won't terminate;
+- **no line of the body may be exactly `MACROSCOPE_PR_BODY`** (it won't be — the token is
+  deliberately unique; never write that string into the description).
+
+The body to compose:
 - a one-line intro noting the agents are **advisory (neutral)** and won't block PRs;
 - a **"Why these rules"** section: one bullet per rule with where it came from — the
-  convention file + quoted line, and/or the PR(s), reviewer(s), and comment excerpt;
+  convention file + quoted line (or, for a template, the repo signal that makes it apply);
 - a closing line: review the files, then merge to activate.
 
+**Then verify the PR actually got created.** On success `gh pr create` prints the new
+PR's URL and exits 0; on failure (branch already has a PR, auth lapsed, network) it exits
+non-zero and prints the error. Confirm you got a URL — if the command errored, surface the
+exact error and stop here. Do **not** advance to the menu below as if the PR exists.
+
 Notes:
+- The worktree lives under a **fixed parent** (`~/.cache/macroscope-check-run-agents/`)
+  rather than a random `mktemp` location, so a user who trusts this flow can pre-approve
+  the agent-file writes once with a permission rule (e.g.
+  `Write(//<home>/.cache/macroscope-check-run-agents/**)` and the matching `Read`/`Edit`)
+  and never be prompted per file. The PR is still the review gate. This is opt-in; without
+  the rule the writes simply prompt as normal.
 - If `$BRANCH` already exists from a prior run, use a fresh name (e.g. add a `-2`
   suffix) or, only with the user's ok, delete the stale branch first.
 - **Keep the worktree (`$WT`) alive for the rest of the session** — it's the scratch
@@ -347,10 +354,10 @@ directly). Present these four choices:
    live Macroscope engine. Handle merge state (a backtest needs the agents live on the
    default branch):
    - Check whether the PR is merged: `gh pr view <N> --json state,mergedAt`.
-   - If already merged → go to **Step 6**.
+   - If already merged → go to **Step 5**.
    - If not merged → tell the user it must merge first, and ask whether you should
      merge it now or they'd rather do it themselves. Merge only on their go (see the
-     merge command below), then go to **Step 6**.
+     merge command below), then go to **Step 5**.
 2. **Merge and finish** — merge the PR and end. Confirm the merge succeeded, remind
    them the agents are now live (advisory) on new PRs, remove the worktree
    (`git worktree remove --force "$WT"`), and stop.
@@ -365,9 +372,9 @@ When merging (choices 1 or 2), use an explicit, non-interactive method that matc
 the repo's convention — default to squash: `gh pr merge <N> --repo "$REPO" --squash`.
 Never run a bare interactive `gh pr merge`.
 
-## Step 6 — Backtest (validate against a real PR)
+## Step 5 — Backtest (validate against a real PR)
 
-The agents must already be live on the default branch (the menu in Step 5 ensures
+The agents must already be live on the default branch (the menu in Step 4 ensures
 this). Validation only happens through this real backtest, because the agents only
 execute inside Macroscope's engine on a real PR — so never present a simulated or
 hand-reasoned evaluation as if Macroscope produced it.

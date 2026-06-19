@@ -20,9 +20,9 @@ Rephrase soft conventions into a concrete trigger, or drop them.
 
 Automate things that come up again and again — not one-offs.
 
-- Strong: a theme raised across **multiple merged PRs by multiple reviewers**, or
-  stated emphatically in `CONTRIBUTING.md`/`CLAUDE.md`.
-- Weak: a single reviewer's one-time nit on one PR.
+- Strong: a rule stated emphatically, or repeated across the team's written conventions
+  (`CONTRIBUTING.md`, `CLAUDE.md`, cursor rules, review skills).
+- Weak: a passing aside mentioned once, or a soft preference with no real teeth.
 
 Recurrence is the clearest evidence the team actually cares and that an agent will
 earn its keep.
@@ -49,11 +49,11 @@ reason to exclude a candidate.
 - Drop: a rule that just re-runs the built-in Correctness bug hunt, or repeats a
   sibling custom agent already in the repo.
 
-## Conventions, not bugs (the most important filter when mining PRs)
+## Conventions, not bugs
 
 A check run agent encodes a **standing convention** — a rule that applies to every
-future PR. It is **not** a place to park individual bug findings. This matters most
-in Step 2, because reviewer comments are a mix of both:
+future PR. It is **not** a place to park individual bug findings. Watch for this when a
+written doc blurs the two — e.g. a `CONTRIBUTING` note that's really a one-off caveat:
 
 - **A bug report** points at a defect *in the PR under review* — "this null-derefs",
   "this leaks a file handle", "wrong boundary here". It's specific to that diff and
@@ -97,9 +97,8 @@ Scope each agent with `include`/`exclude` globs so it only runs on relevant file
 - Carries a **severity** (🔴 / 🟡 / 🟢).
 - Says what **not** to flag where false positives are likely.
 - Ends the agent with **explicit permission to report nothing** on a clean PR.
-- Has **provenance tracked for the user** (source file + line/quote, or PR # +
-  reviewer + comment excerpt) — shown in the proposal and PR description, **not**
-  written into the agent file.
+- Has **provenance tracked for the user** (source file + line/quote) — shown in the
+  proposal and PR description, **not** written into the agent file.
 
 ## Anti-patterns — do not propose
 

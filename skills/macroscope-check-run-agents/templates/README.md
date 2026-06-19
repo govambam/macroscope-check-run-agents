@@ -15,9 +15,9 @@ already check.
 > findings post as inline comments, not just the check-run summary). Each template here
 > is a directly-usable `.md` agent file.
 >
-> **Wired into the skill.** `SKILL.md` assesses template applicability in Step 3, offers
-> fitting templates in the Step 4 menu (labeled "Macroscope template"), and copies
-> accepted ones **verbatim** in Step 5.
+> **Wired into the skill.** `SKILL.md` assesses template applicability in Step 2, offers
+> fitting templates in the Step 3 menu (labeled "Macroscope template"), and copies
+> accepted ones **verbatim** in Step 4.
 
 ## The templates
 

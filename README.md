@@ -1,8 +1,8 @@
 # macroscope-check-run-agents
 
 A Claude Code skill that bootstraps [Macroscope check run agents](https://docs.macroscope.com/check-run-agents)
-for a repository — by reading the conventions your team already writes down and
-mining what your reviewers actually say in merged PRs.
+for a repository — by reading the conventions your team already writes down (rule files,
+contributor docs, review skills) and pairing them with Macroscope's curated templates.
 
 You install the skill, open your project in Claude Code, and run it. It proposes a
 handful of high-value rules, you accept the ones you want, and it opens a PR adding
@@ -15,28 +15,25 @@ the generated agent files. Merge to activate; backtest against a real PR to vali
    agents (plus the built-in Correctness/Approvability) so it doesn't duplicate them.
    It deliberately *allows* overlap with linters/CI: if a violation reached review, the
    linter didn't catch it, so an agent that does is a real save.
-2. **Mines** recent merged PRs for **recurring human review comments** — the rules
-   your team enforces by hand today (skipping one-off bug findings, which the
-   built-in Correctness agent already covers).
-3. **Recommends** up to 6 of the strongest candidates and lets you accept/decline each
-   in an interactive menu. Each suggestion shows **why** — the exact file and line, or
-   the PRs and reviewer comments in *your* repo where it found the convention. Fewer
-   than 6 if the repo doesn't hold that many genuine conventions — it won't pad the
-   list with weak ideas. (Provenance is shown to you and recorded in the PR
-   description, but kept out of the agent files so it can't confuse the agent at
-   runtime.)
-4. **Generates** the approved rules as `.macroscope/check-run-agents/*.md` files on a
+2. **Recommends** up to 6 of the strongest candidates — drawn from your conventions and
+   Macroscope's curated templates — and lets you accept/decline each in an interactive
+   menu. Each suggestion shows **why** — the exact file and line in *your* repo where it
+   found the convention (or, for a template, the repo signal that makes it apply). Fewer
+   than 6 if the repo doesn't hold that many genuine conventions — it won't pad the list
+   with weak ideas. (Provenance is shown to you and recorded in the PR description, but
+   kept out of the agent files so it can't confuse the agent at runtime.)
+3. **Generates** the approved rules as `.macroscope/check-run-agents/*.md` files on a
    new branch (built in an isolated worktree, so your working tree is never touched)
    and **opens a PR** — your review surface. Generated agents are advisory
    (`neutral`) and can't block PRs.
-5. You **review, edit, and merge** the PR. Macroscope loads agents from the default
+4. You **review, edit, and merge** the PR. Macroscope loads agents from the default
    branch, so merging is what activates them.
-6. **Backtests** (optional): the skill recreates a real past PR as a fresh one so your
+5. **Backtests** (optional): the skill recreates a real past PR as a fresh one so your
    now-live Macroscope agents evaluate it for real. You read the actual check-run
    output and iterate.
 
 > The skill never simulates a check run itself. Macroscope is the only thing that
-> ever runs one — validation happens through the real backtest in step 6.
+> ever runs one — validation happens through the real backtest in step 5.
 
 ## Requirements
 
